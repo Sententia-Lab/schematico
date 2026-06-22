@@ -1,0 +1,11 @@
+{
+  "table": "users",
+  "fields": [
+    { "name": "id", "type": "uuid" },
+    { "name": "full_name", "type": "full_name" },
+    { "name": "email", "type": "email" },
+    { "name": "role", "type": "enum", "values": ["admin", "editor", "viewer"] },
+    { "name": "country", "type": "country" },
+    { "name": "created_at", "type": "timestamp" }
+  ]
+}
