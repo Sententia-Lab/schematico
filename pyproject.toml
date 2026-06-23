@@ -33,9 +33,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Sententia-Lab/data-generator"
-Repository = "https://github.com/Sententia-Lab/data-generator"
-Issues = "https://github.com/Sententia-Lab/data-generator/issues"
+Homepage = "https://github.com/Sententia-Lab/schematico"
+Repository = "https://github.com/Sententia-Lab/schematico"
+Issues = "https://github.com/Sententia-Lab/schematico/issues"
 
 [project.scripts]
 schematico = "schematico.cli.main:main"
@@ -46,9 +46,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["schematico"]
-
-[tool.uv.workspace]
-members = ["api"]
 
 [dependency-groups]
 dev = [

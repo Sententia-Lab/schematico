@@ -141,5 +141,3 @@ with `state.toml` tracking the active default per mode.
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
-
-Contributing? See [`README.dev.md`](README.dev.md).
