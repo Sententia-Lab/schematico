@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+from logging import Logger
 import random
 import uuid
 from datetime import timezone
 
 from faker import Faker
+from pydantic import BaseModel
 
 from schematico.schema import FieldSpec
 
@@ -46,3 +48,24 @@ def _generate_value(field: FieldSpec) -> object:
 def _hash_record(record: dict) -> str:
     serialized = json.dumps(record, sort_keys=True, default=str)
     return hashlib.sha256(serialized.encode()).hexdigest()
+
+
+def de_duplicate_records(records: list[BaseModel], logger: Logger) -> list[dict]:
+    seen: dict[str, dict] = {}
+    duplicates = 0
+    for record in records:
+        record_dict = record.model_dump()
+        h = _hash_record(record_dict)
+
+        if h in seen:
+            duplicates += 1
+            continue
+
+        seen[h] = record_dict
+
+    logger.info(
+        "De-duplication complete: %d unique records (%d duplicates discarded)",
+        len(seen),
+        duplicates,
+    )
+    return list(seen.values())
