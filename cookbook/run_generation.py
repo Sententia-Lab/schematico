@@ -29,12 +29,10 @@ class User(BaseModel):
 
 def main() -> None:
     model_list = [
+        schematico.SchematicoModel(model="gateway/anthropic:claude-sonnet-4-6"),
         schematico.SchematicoModel(
-            model="gateway/anthropic:claude-sonnet-4-6",
+            model="ollama:llama3.2", base_url="http://localhost:11434/v1"
         ),
-        # schematico.SchematicoModel(
-        #     model="ollama:llama3.2", base_url="http://localhost:11434/v1"
-        # ),
     ]
 
     model = schematico.get_llm_model(model_list)
