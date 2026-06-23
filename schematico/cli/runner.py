@@ -10,9 +10,8 @@ from schematico.cli.progress import ProgressReporter
 from schematico.cli.projects import ProjectConfig
 from schematico.generator import run_generation
 from schematico.logging import get_logger
-from schematico.models import build_record_model
+from schematico.models import model_from_dict, model_from_json
 from schematico.providers import DEFAULT_MODEL, env_key_for
-from schematico.schema import load_schema, load_schema_from_dict
 
 logger = get_logger("cli.runner")
 
@@ -44,46 +43,40 @@ def run(
         )
         sys.exit(1)
 
+    output_path = output_override or config.output_path
+
     try:
         if config.schema_path:
-            spec = load_schema(config.schema_path)
-            raw = json.loads(Path(config.schema_path).read_text(encoding="utf-8"))
+            record_model, rows, instructions = model_from_json(config.schema_path)
         else:
-            spec = load_schema_from_dict(config.record_schema)
-            raw = config.record_schema
+            record_model, rows, instructions = model_from_dict(config.record_schema)
     except (FileNotFoundError, ValueError) as e:
         print(f"schematico: error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    samples = (
-        count_override
-        if count_override is not None
-        else (raw.get("rows") if isinstance(raw.get("rows"), int) else config.count)
-    )
-    instructions = spec.instructions
-    record_model = build_record_model(spec)
-    output_path = output_override or config.output_path
+    samples = count_override if count_override is not None else rows
+    table = record_model.__name__.removesuffix("Record")
 
     logger.info(
         "Running %s for '%s': %d fields, %d records, model=%s",
         config.mode,
-        spec.table,
-        len(spec.fields),
+        table,
+        len(record_model.model_fields),
         samples,
         model or "(default)",
     )
 
     from pydantic_ai.exceptions import UserError
 
-    reporter = ProgressReporter(spec.table)
+    reporter = ProgressReporter(table)
     try:
         records = run_generation(
             record_model,
             samples,
             instructions,
-            progress_cb=reporter.update,
             model=model,
             logfire_token=config.logfire_token or None,
+            progress_cb=reporter.update,
         )
     except UserError as e:
         print(f"schematico: error: {e}", file=sys.stderr)
@@ -106,4 +99,4 @@ def run(
         sys.exit(1)
 
     logger.info("Wrote %d records to %s", len(records), out)
-    print(f"Generated {len(records)} records " f"from schema '{spec.table}' -> {out}")
+    print(f"Generated {len(records)} records from schema '{table}' -> {out}")

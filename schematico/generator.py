@@ -1,25 +1,33 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import re
-from typing import Any
+from typing import Any, Callable
 
 import logfire
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
-from schematico.helpers import de_duplicate_records
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
-from schematico.tools import sample_record
 
 logger = get_logger("core.generator")
 
 
-def _snake_case(name: str) -> str:
+def _table_name(schema: type[BaseModel]) -> str:
+    name = schema.__name__
+    if name.endswith("Record"):
+        name = name[: -len("Record")]
     s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
     return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def _hash_record(record: dict) -> str:
+    serialized = json.dumps(record, sort_keys=True, default=str)
+    return hashlib.sha256(serialized.encode()).hexdigest()
 
 
 def _describe_fields(schema: type[BaseModel]) -> list[str]:
@@ -42,7 +50,7 @@ def _describe_fields(schema: type[BaseModel]) -> list[str]:
 
 
 def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
-    table = _snake_case(schema.__name__)
+    table = _table_name(schema)
     field_lines = _describe_fields(schema)
     prompt = (
         f"You are a data generation agent for the '{table}' table.\n"
@@ -51,8 +59,6 @@ def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> s
         "- Every record must be unique across all fields.\n"
         "- Enum fields must use only the declared values.\n"
         "- Numeric fields must respect any declared min/max range.\n"
-        "- Use the sample_record tool if you want a realistic baseline "
-        "example.\n"
         "- Return exactly the requested number of records."
     )
     if instructions:
@@ -67,7 +73,7 @@ def build_agent(
     model: str | Model | None = None,
 ) -> Agent:
     resolved: str | Model = model if model is not None else DEFAULT_MODEL
-    table = _snake_case(schema.__name__)
+    table = _table_name(schema)
     logger.debug("Building agent for '%s' with model %r", table, resolved)
     batch_model = build_batch_model(schema)
 
@@ -85,6 +91,7 @@ def run_generation(
     instructions: str = "",
     model: str | Model | None = None,
     logfire_token: str | None = None,
+    progress_cb: Callable[[int, int, str], None] | None = None,
 ) -> list[dict]:
     if logfire_token:
         logfire.configure(token=logfire_token, send_to_logfire=True)
@@ -92,7 +99,7 @@ def run_generation(
         logfire.configure(send_to_logfire=False)
     logfire.instrument_pydantic_ai()
 
-    table = _snake_case(schema.__name__)
+    table = _table_name(schema)
     logger.info(
         "Starting generation run for '%s' (%d records requested)", table, samples
     )
@@ -102,5 +109,23 @@ def run_generation(
     )
     logger.debug("Agent returned %d raw records", len(result.output.records))
 
-    deduped = de_duplicate_records(result.output.records, logger)
-    return deduped
+    seen: dict[str, dict] = {}
+    duplicates = 0
+    for record in result.output.records:
+        record_dict = record.model_dump()
+        h = _hash_record(record_dict)
+        if h in seen:
+            duplicates += 1
+            if progress_cb:
+                progress_cb(len(seen), samples, "duplicate")
+            continue
+        seen[h] = record_dict
+        if progress_cb:
+            progress_cb(len(seen), samples, "found")
+
+    logger.info(
+        "Generation run complete: %d unique records (%d duplicates discarded)",
+        len(seen),
+        duplicates,
+    )
+    return list(seen.values())

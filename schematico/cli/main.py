@@ -169,7 +169,7 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
         """Embed a JSON schema file into the active config's [schema] table."""
         import json as _json
 
-        from schematico.schema import load_schema_from_dict
+        from schematico.models import model_from_dict
 
         try:
             cfg = resolve_active_project(mode)
@@ -186,7 +186,7 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
             typer.echo(f"schematico: error: invalid JSON in '{file}': {e}", err=True)
             raise typer.Exit(1)
         try:
-            load_schema_from_dict(raw)
+            model_from_dict(raw)
         except ValueError as e:
             typer.echo(f"schematico: error: {e}", err=True)
             raise typer.Exit(1)
@@ -201,7 +201,7 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
     @schema_app.command("path")
     def _schema_path(file: str = typer.Argument(..., help="Path to a JSON schema file to reference.")) -> None:
         """Reference an external JSON schema file (not embedded)."""
-        from schematico.schema import load_schema
+        from schematico.models import model_from_json
 
         try:
             cfg = resolve_active_project(mode)
@@ -209,7 +209,7 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
             typer.echo(f"schematico: error: {e}", err=True)
             raise typer.Exit(1)
         try:
-            load_schema(file)
+            model_from_json(file)
         except (FileNotFoundError, ValueError) as e:
             typer.echo(f"schematico: error: {e}", err=True)
             raise typer.Exit(1)
