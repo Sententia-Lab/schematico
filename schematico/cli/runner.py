@@ -10,7 +10,7 @@ from schematico.cli.progress import ProgressReporter
 from schematico.cli.projects import ProjectConfig
 from schematico.generator import run_generation
 from schematico.logging import get_logger
-from schematico.schema import load_schema, load_schema_from_dict
+from schematico.models import model_from_dict, model_from_json
 
 logger = get_logger("cli.runner")
 
@@ -40,37 +40,41 @@ def run(
         )
         sys.exit(1)
 
-    count = count_override if count_override is not None else config.count
     model = model_override or config.model or None
     output_path = output_override or config.output_path
 
     try:
         if config.schema_path:
-            schema = load_schema(config.schema_path, count_override=count)
+            record_model, rows, instructions = model_from_json(config.schema_path)
         else:
-            schema = load_schema_from_dict(config.record_schema, count_override=count)
+            record_model, rows, instructions = model_from_dict(config.record_schema)
     except (FileNotFoundError, ValueError) as e:
         print(f"schematico: error: {e}", file=sys.stderr)
         sys.exit(1)
 
+    samples = count_override if count_override is not None else rows
+    table = record_model.__name__.removesuffix("Record")
+
     logger.info(
-        "Running %s for '%s': %d fields, %d rows, model=%s",
+        "Running %s for '%s': %d fields, %d records, model=%s",
         config.mode,
-        schema.table,
-        len(schema.fields),
-        schema.rows,
+        table,
+        len(record_model.model_fields),
+        samples,
         model or "(default)",
     )
 
     from pydantic_ai.exceptions import UserError
 
-    reporter = ProgressReporter(schema.table)
+    reporter = ProgressReporter(table)
     try:
         records = run_generation(
-            schema,
-            progress_cb=reporter.update,
+            record_model,
+            samples,
+            instructions,
             model=model,
             logfire_token=config.logfire_token or None,
+            progress_cb=reporter.update,
         )
     except UserError as e:
         print(f"schematico: error: {e}", file=sys.stderr)
@@ -78,9 +82,6 @@ def run(
     reporter.done(len(records))
 
     out_path = Path(output_path)
-    # If the user provided a file path (has a suffix), treat it as the output
-    # file and ensure its parent directory exists. Otherwise treat the value
-    # as a directory and create it, then write a timestamped file inside.
     if out_path.suffix:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out = out_path
@@ -96,4 +97,4 @@ def run(
         sys.exit(1)
 
     logger.info("Wrote %d records to %s", len(records), out)
-    print(f"Generated {len(records)} records " f"from schema '{schema.table}' -> {out}")
+    print(f"Generated {len(records)} records from schema '{table}' -> {out}")

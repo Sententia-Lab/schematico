@@ -17,24 +17,25 @@ from schematico.cli.projects import (
     save_project,
     set_default,
 )
-from schematico.schema import load_schema_from_dict
+from schematico.models import model_from_dict
 
 
 _TEMPLATE_SCHEMA: dict[str, Any] = {
     "table": "REPLACE_WITH_TABLE_NAME",
+    "rows": 25,
+    "instructions": "",
     "fields": [
-        {"name": "id", "type": "uuid"},
-        {"name": "full_name", "type": "full_name"},
-        {"name": "email", "type": "email"},
+        {"name": "id", "type": "string", "description": "UUID v4"},
+        {"name": "full_name", "type": "string", "description": "realistic full name"},
+        {"name": "email", "type": "string", "description": "unique work email"},
         {
             "name": "role",
             "type": "enum",
             "values": ["admin", "editor", "viewer"],
         },
-        {"name": "country", "type": "country"},
-        {"name": "created_at", "type": "timestamp"},
+        {"name": "country", "type": "string", "description": "ISO 3166-1 alpha-2 country code"},
+        {"name": "created_at", "type": "string", "description": "ISO 8601 UTC timestamp"},
     ],
-    "instructions": "",
 }
 
 
@@ -56,7 +57,7 @@ def _setup_schema(name: str, mode: Mode) -> tuple[dict[str, Any], str]:
             )
             raise typer.Exit(1)
         try:
-            load_schema_from_dict(raw)
+            model_from_dict(raw)
         except ValueError as e:
             typer.echo(f"schematico: error: {e}", err=True)
             raise typer.Exit(1)
