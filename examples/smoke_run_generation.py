@@ -28,9 +28,6 @@ class User(BaseModel):
 
 
 def main() -> None:
-    # Simplest path: just a model string. Reads creds from env vars.
-    # model = schematico.get_llm_model("gateway/anthropic:claude-sonnet-4-6")
-
     model_list = [
         schematico.SchematicoModel(
             model="gateway/anthropic:claude-sonnet-4-6",
