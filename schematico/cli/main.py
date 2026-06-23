@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import typer
@@ -79,12 +78,8 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
             model_override=model,
         )
 
-    list_app = typer.Typer(invoke_without_command=True, no_args_is_help=False)
-
-    @list_app.callback()
-    def _list_default(ctx: typer.Context) -> None:
-        if ctx.invoked_subcommand is not None:
-            return
+    @sub.command("list", help=f"List {mode} configs.")
+    def _list() -> None:
         default_name = get_default(mode)
         paths = list_projects(mode)
         if not paths:
@@ -96,27 +91,6 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
             name = parsed[0] if parsed else p.name
             marker = "*" if name == default_name else " "
             typer.echo(f"{marker} {name}  ({p})")
-
-    @list_app.command("models")
-    def _list_models() -> None:
-        from schematico.gateway import list_models
-
-        cfg_obj = ctx_get_config(mode)
-        env_key = cfg_obj.env_key if cfg_obj else "PYDANTIC_AI_GATEWAY_API_KEY"
-        api_key = os.environ.get(env_key)
-        if not api_key:
-            typer.echo(f"schematico: error: env var '{env_key}' is not set.", err=True)
-            raise typer.Exit(1)
-        models = list_models(api_key)
-        if not models:
-            typer.echo("No models returned by the gateway.")
-            return
-        for m in models:
-            typer.echo(m)
-
-    sub.add_typer(
-        list_app, name="list", help=f"List {mode} configs (or `list models`)."
-    )
 
     @sub.command(
         "use",
@@ -247,13 +221,6 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
     sub.add_typer(schema_app, name="schema")
 
     return sub
-
-
-def ctx_get_config(mode: Mode):
-    try:
-        return resolve_active_project(mode)
-    except ProjectNotFoundError:
-        return None
 
 
 app.add_typer(_make_mode_app("generate"), name="generate")
