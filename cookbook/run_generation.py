@@ -33,10 +33,6 @@ def main() -> None:
             model="gateway/anthropic:claude-sonnet-4-6",
         ),
         # schematico.SchematicoModel(
-        #     model="gateway/openai:gpt-4o-mini",
-        #     api_key="pylf_v2_us_b036c450-5008-4cc4-acac-dd99e1e570a5_q50KCmhzRlbBv5wVSp0JBtwscB79SPjtKP5G6yMwjHvT",
-        # ),
-        # schematico.SchematicoModel(
         #     model="ollama:llama3.2", base_url="http://localhost:11434/v1"
         # ),
     ]
