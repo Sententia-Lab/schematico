@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from typing import Any
 
 import logfire
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
-from schematico.helpers import _hash_record
+from schematico.helpers import de_duplicate_records
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
@@ -75,7 +75,6 @@ def build_agent(
         model=resolved,
         output_type=batch_model,
         system_prompt=_build_prompt(schema, samples, instructions),
-        tools=[sample_record],
     )
     return agent
 
@@ -84,8 +83,6 @@ def run_generation(
     schema: type[BaseModel],
     samples: int,
     instructions: str = "",
-    *,
-    progress_cb: Callable[[int, int, str], None] | None = None,
     model: str | Model | None = None,
     logfire_token: str | None = None,
 ) -> list[dict]:
@@ -105,25 +102,5 @@ def run_generation(
     )
     logger.debug("Agent returned %d raw records", len(result.output.records))
 
-    seen: dict[str, dict] = {}
-    duplicates = 0
-    for record in result.output.records:
-        record_dict = record.model_dump()
-        h = _hash_record(record_dict)
-
-        if h in seen:
-            duplicates += 1
-            if progress_cb:
-                progress_cb(len(seen), samples, "duplicate")
-            continue
-
-        seen[h] = record_dict
-        if progress_cb:
-            progress_cb(len(seen), samples, "found")
-
-    logger.info(
-        "Generation run complete: %d unique records (%d duplicates discarded)",
-        len(seen),
-        duplicates,
-    )
-    return list(seen.values())
+    deduped = de_duplicate_records(result.output.records, logger)
+    return deduped
