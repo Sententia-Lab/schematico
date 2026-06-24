@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
+from schematico import __version__
 from schematico.cli import runner
 from schematico.cli.projects import (
     Mode,
@@ -34,6 +35,26 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"schematico {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        help="Show the version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
+) -> None:
+    """schematico — generate or discover data from a JSON schema."""
 
 
 def _make_mode_app(mode: Mode) -> typer.Typer:

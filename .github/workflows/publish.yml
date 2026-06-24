@@ -1,5 +1,13 @@
 name: Publish to PyPI
 
+# Publishes to PyPI and creates a GitHub Release when a version tag (e.g. v0.1.0)
+# is pushed. Uses PyPI Trusted Publishing (OIDC) — no API token or secret needed.
+#
+# Typical release flow:
+#   1. Bump `version` in pyproject.toml and merge to main.
+#   2. git tag v0.1.0 && git push origin v0.1.0
+# The tag must match the version in pyproject.toml, or the run fails.
+
 on:
   push:
     tags:
@@ -14,7 +22,8 @@ jobs:
       name: pypi
       url: https://pypi.org/p/schematico
     permissions:
-      id-token: write
+      id-token: write # Trusted Publishing to PyPI (OIDC)
+      contents: write # create the GitHub Release
     steps:
       - uses: actions/checkout@v4
 
@@ -23,8 +32,32 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build schematico
-        run: uv build --package schematico
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(uv run python -c 'import schematico; print(schematico.__version__)')"
+          echo "tag=$tag_version  package=$pkg_version"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag v$tag_version does not match pyproject version $pkg_version. Bump the version in pyproject.toml before tagging."
+            exit 1
+          fi
+
+      - name: Build distributions
+        run: uv build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*
