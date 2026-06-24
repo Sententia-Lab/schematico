@@ -24,6 +24,7 @@ class ProjectConfig(BaseModel):
     mode: Mode
     model: str = ""
     env_key: str = DEFAULT_ENV_KEY
+    base_url: str = ""
     output_path: str = f"./{CONFIG_DIRNAME}/output"
     count: int = DEFAULT_COUNT
     logfire_token: str = ""

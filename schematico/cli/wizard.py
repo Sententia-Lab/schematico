@@ -123,8 +123,15 @@ def run_wizard() -> Path:
         show_default=True,
     )
     env_key = typer.prompt(
-        "Name of env var that holds your gateway API key (not the key itself)",
+        "Name of env var that holds your API key (not the key itself; "
+        "leave blank for local/keyless models like ollama)",
         default=DEFAULT_ENV_KEY,
+    )
+    base_url = typer.prompt(
+        "Custom base URL (leave blank to use the provider's default; "
+        "e.g. http://localhost:11434/v1 for ollama)",
+        default="",
+        show_default=False,
     )
     logfire_token = ""
     if typer.confirm(
@@ -143,6 +150,7 @@ def run_wizard() -> Path:
         mode=mode,
         model=model,
         env_key=env_key,
+        base_url=base_url,
         output_path=output_path,
         count=count,
         logfire_token=logfire_token,
