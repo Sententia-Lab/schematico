@@ -1,19 +1,19 @@
-from __future__ import annotations
-
-import hashlib
-import json
-import re
-from typing import Any, Callable
-
 import logfire
 from pydantic import BaseModel
-from pydantic_ai import Agent
 from pydantic_ai.models import Model
+from pydantic_ai.agent import Agent
+from typing import Callable
 
 from schematico.helpers import _table_name, _hash_record, _describe_fields
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
+from schematico.tools.tavily_tools import (
+    search_web,
+    extract_web_content,
+    crawl_paths,
+    map_website,
+)
 
 logger = get_logger("core.generator")
 
@@ -22,13 +22,14 @@ def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> s
     table = _table_name(schema)
     field_lines = _describe_fields(schema)
     prompt = (
-        f"You are a data generation agent for the '{table}' table.\n"
-        f"Generate exactly {samples} realistic, unique records with "
+        f"You are a data discovery agent for the '{table}' table.\n"
+        f"Find exactly {samples} realistic, unique records with "
         "these fields:\n" + "\n".join(field_lines) + "\n\nRules:\n"
         "- Every record must be unique across all fields.\n"
         "- Enum fields must use only the declared values.\n"
         "- Numeric fields must respect any declared min/max range.\n"
-        "- Return exactly the requested number of records."
+        "- Return exactly the requested number of records.\n"
+        "- Use the tavily tools to find the records."
     )
     if instructions:
         prompt += f"\n\nAdditional instructions:\n{instructions}"
@@ -50,11 +51,12 @@ def build_agent(
         model=resolved,
         output_type=batch_model,
         system_prompt=_build_prompt(schema, samples, instructions),
+        tools=[search_web, extract_web_content, crawl_paths, map_website],
     )
     return agent
 
 
-def run_generation(
+def run_discovery(
     schema: type[BaseModel],
     samples: int,
     instructions: str = "",
@@ -66,6 +68,8 @@ def run_generation(
         logfire.configure(token=logfire_token, send_to_logfire=True)
     else:
         logfire.configure(send_to_logfire=False)
+
+    logfire.configure(scrubbing=False)
     logfire.instrument_pydantic_ai()
 
     table = _table_name(schema)
