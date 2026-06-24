@@ -15,7 +15,7 @@ from schematico.tools.tavily_tools import (
     map_website,
 )
 
-logger = get_logger("core.generator")
+logger = get_logger("core.discovery")
 
 
 def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
@@ -65,20 +65,18 @@ def run_discovery(
     progress_cb: Callable[[int, int, str], None] | None = None,
 ) -> list[dict]:
     if logfire_token:
-        logfire.configure(token=logfire_token, send_to_logfire=True)
+        logfire.configure(token=logfire_token, send_to_logfire=True, scrubbing=False)
     else:
-        logfire.configure(send_to_logfire=False)
-
-    logfire.configure(scrubbing=False)
+        logfire.configure(send_to_logfire=False, scrubbing=False)
     logfire.instrument_pydantic_ai()
 
     table = _table_name(schema)
     logger.info(
-        "Starting generation run for '%s' (%d records requested)", table, samples
+        "Starting discovery run for '%s' (%d records requested)", table, samples
     )
     agent = build_agent(schema, samples, instructions, model=model)
     result = agent.run_sync(
-        f"Generate exactly {samples} unique records for the '{table}' table."
+        f"Find exactly {samples} unique records for the '{table}' table."
     )
     logger.debug("Agent returned %d raw records", len(result.output.records))
 

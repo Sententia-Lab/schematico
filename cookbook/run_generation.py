@@ -1,7 +1,7 @@
 """Smoke test for schematico.run_generation against a real LLM.
 
 Run with:
-    uv run python examples/smoke_run_generation.py
+    uv run python cookbook/run_generation.py
 
 Pick a provider by setting one of:
     PYDANTIC_AI_GATEWAY_API_KEY   (default, uses gateway/anthropic:claude-sonnet-4-6)

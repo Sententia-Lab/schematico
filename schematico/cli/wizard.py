@@ -19,7 +19,6 @@ from schematico.cli.projects import (
 )
 from schematico.models import model_from_dict
 
-
 _TEMPLATE_SCHEMA: dict[str, Any] = {
     "table": "REPLACE_WITH_TABLE_NAME",
     "rows": 25,
@@ -33,17 +32,23 @@ _TEMPLATE_SCHEMA: dict[str, Any] = {
             "type": "enum",
             "values": ["admin", "editor", "viewer"],
         },
-        {"name": "country", "type": "string", "description": "ISO 3166-1 alpha-2 country code"},
-        {"name": "created_at", "type": "string", "description": "ISO 8601 UTC timestamp"},
+        {
+            "name": "country",
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2 country code",
+        },
+        {
+            "name": "created_at",
+            "type": "string",
+            "description": "ISO 8601 UTC timestamp",
+        },
     ],
 }
 
 
 def _setup_schema(name: str, mode: Mode) -> tuple[dict[str, Any], str]:
     """Return (record_schema, schema_path) — exactly one is populated."""
-    if typer.confirm(
-        "Do you have an existing JSON schema file to use?", default=False
-    ):
+    if typer.confirm("Do you have an existing JSON schema file to use?", default=False):
         path_str = typer.prompt("Path to JSON schema file")
         p = Path(path_str).expanduser()
         if not p.exists():
@@ -52,9 +57,7 @@ def _setup_schema(name: str, mode: Mode) -> tuple[dict[str, Any], str]:
         try:
             raw = json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
-            typer.echo(
-                f"schematico: error: invalid JSON in '{p}': {e}", err=True
-            )
+            typer.echo(f"schematico: error: invalid JSON in '{p}': {e}", err=True)
             raise typer.Exit(1)
         try:
             model_from_dict(raw)
@@ -67,7 +70,9 @@ def _setup_schema(name: str, mode: Mode) -> tuple[dict[str, Any], str]:
             default=True,
         )
         if embed:
-            typer.echo(f"Imported schema from '{p}' ({len(raw.get('fields', []))} fields).")
+            typer.echo(
+                f"Imported schema from '{p}' ({len(raw.get('fields', []))} fields)."
+            )
             return raw, ""
         typer.echo(f"Referencing schema at '{p}'.")
         return {}, str(p)
@@ -90,9 +95,7 @@ def _setup_schema(name: str, mode: Mode) -> tuple[dict[str, Any], str]:
 def run_wizard() -> Path:
     name_input = typer.prompt("Project name", default="project_1")
     mode_input = (
-        typer.prompt("Mode ([d]iscover/[g]enerate)", default="discover")
-        .strip()
-        .lower()
+        typer.prompt("Mode ([d]iscover/[g]enerate)", default="discover").strip().lower()
     )
     if mode_input in ("d", "discover"):
         mode: Mode = "discover"
@@ -113,9 +116,7 @@ def run_wizard() -> Path:
         "Default output directory (filename will be <project>_<timestamp>.json)",
         default="./.schematico/output",
     )
-    count = typer.prompt(
-        "Count (records to generate)", default=DEFAULT_COUNT, type=int
-    )
+    count = typer.prompt("Count (records to generate)", default=DEFAULT_COUNT, type=int)
     model = typer.prompt(
         "Model (e.g. gateway/anthropic:claude-sonnet-4-6; "
         "leave blank to inherit PAI_MODEL)",

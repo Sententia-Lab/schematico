@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from schematico.generator import _hash_record, run_generation
 from schematico.models import build_batch_model, model_from_dict
 
-
 _USERS_SCHEMA = {
     "table": "users",
     "rows": 2,
@@ -83,9 +82,7 @@ def test_run_generation_accepts_user_pydantic_model():
         patch("schematico.generator.logfire.configure"),
         patch("schematico.generator.logfire.instrument_pydantic_ai"),
     ):
-        records = run_generation(
-            Users, samples=2, instructions="EU-based users only"
-        )
+        records = run_generation(Users, samples=2, instructions="EU-based users only")
 
     assert len(records) == 2
     assert {"id", "email"} == set(records[0].keys())

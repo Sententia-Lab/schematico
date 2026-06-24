@@ -1,7 +1,7 @@
 """Smoke test for schematico.run_discovery against a real LLM.
 
 Run with:
-    uv run python examples/run_discovery.py
+    uv run python cookbook/run_discovery.py
 
 Pick a provider by setting one of:
     PYDANTIC_AI_GATEWAY_API_KEY   (default, uses gateway/anthropic:claude-sonnet-4-6)

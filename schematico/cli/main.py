@@ -165,7 +165,9 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
     )
 
     @schema_app.command("import")
-    def _schema_import(file: str = typer.Argument(..., help="Path to a JSON schema file.")) -> None:
+    def _schema_import(
+        file: str = typer.Argument(..., help="Path to a JSON schema file.")
+    ) -> None:
         """Embed a JSON schema file into the active config's [schema] table."""
         import json as _json
 
@@ -199,7 +201,9 @@ def _make_mode_app(mode: Mode) -> typer.Typer:
         )
 
     @schema_app.command("path")
-    def _schema_path(file: str = typer.Argument(..., help="Path to a JSON schema file to reference.")) -> None:
+    def _schema_path(
+        file: str = typer.Argument(..., help="Path to a JSON schema file to reference.")
+    ) -> None:
         """Reference an external JSON schema file (not embedded)."""
         from schematico.models import model_from_json
 
