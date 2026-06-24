@@ -46,9 +46,7 @@ def _build_field(spec: dict[str, Any]) -> tuple[type, Any]:
     if ftype == "enum":
         values = spec.get("values") or []
         if not isinstance(values, list) or not values:
-            raise ValueError(
-                f"Field '{name}': enum requires a non-empty 'values' list"
-            )
+            raise ValueError(f"Field '{name}': enum requires a non-empty 'values' list")
         py_type = Literal[tuple(values)]  # type: ignore[valid-type]
         return py_type, Field(description=description)
 

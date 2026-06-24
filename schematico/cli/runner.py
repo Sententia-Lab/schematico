@@ -8,6 +8,7 @@ from pathlib import Path
 
 from schematico.cli.progress import ProgressReporter
 from schematico.cli.projects import ProjectConfig
+from schematico.discovery import run_discovery
 from schematico.generator import run_generation
 from schematico.logging import get_logger
 from schematico.models import model_from_dict, model_from_json
@@ -28,6 +29,16 @@ def run(
             f"schematico: error: config '{config.name}.{config.mode}.toml' has no "
             "schema. Either fill the [schema] table or set schema_path "
             f"(e.g. `schematico {config.mode} schema import ./schema.json`).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if config.mode == "discover" and not os.environ.get("TAVILY_API_KEY"):
+        print(
+            "schematico: error: `discover` mode searches the live web and needs a "
+            "Tavily API key. Set TAVILY_API_KEY (get one free at "
+            "https://tavily.com), or use `generate` mode to synthesize records "
+            "without web search.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -78,9 +89,11 @@ def run(
 
     from pydantic_ai.exceptions import UserError
 
+    run_fn = run_discovery if config.mode == "discover" else run_generation
+
     reporter = ProgressReporter(table)
     try:
-        records = run_generation(
+        records = run_fn(
             record_model,
             samples,
             instructions,
