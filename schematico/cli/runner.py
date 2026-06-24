@@ -11,7 +11,7 @@ from schematico.cli.projects import ProjectConfig
 from schematico.generator import run_generation
 from schematico.logging import get_logger
 from schematico.models import model_from_dict, model_from_json
-from schematico.providers import DEFAULT_MODEL, env_key_for
+from schematico.providers import DEFAULT_MODEL, SchematicoModel, get_llm_model
 
 logger = get_logger("cli.runner")
 
@@ -32,16 +32,26 @@ def run(
         )
         sys.exit(1)
 
-    model = model_override or config.model or None
-    resolved_model = model or DEFAULT_MODEL
-    env_key = env_key_for(resolved_model) or config.env_key
-    if env_key and not os.environ.get(env_key):
-        print(
-            f"schematico: error: env var '{env_key}' is not set "
-            f"(required by model '{resolved_model}').",
-            file=sys.stderr,
+    model_str = model_override or config.model or DEFAULT_MODEL
+
+    api_key: str | None = None
+    if config.env_key:
+        api_key = os.environ.get(config.env_key)
+        if not api_key:
+            print(
+                f"schematico: error: env var '{config.env_key}' is not set "
+                f"(required by config '{config.name}').",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    llm_model = get_llm_model(
+        SchematicoModel(
+            model=model_str,
+            api_key=api_key,
+            base_url=config.base_url or None,
         )
-        sys.exit(1)
+    )
 
     output_path = output_override or config.output_path
 
@@ -63,7 +73,7 @@ def run(
         table,
         len(record_model.model_fields),
         samples,
-        model or "(default)",
+        model_str,
     )
 
     from pydantic_ai.exceptions import UserError
@@ -74,7 +84,7 @@ def run(
             record_model,
             samples,
             instructions,
-            model=model,
+            model=llm_model,
             logfire_token=config.logfire_token or None,
             progress_cb=reporter.update,
         )
