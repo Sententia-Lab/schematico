@@ -1,4 +1,5 @@
 from schematico.generator import run_generation
+from schematico.discovery import run_discovery
 from schematico.models import build_batch_model, model_from_dict, model_from_json
 from schematico.providers import (
     DEFAULT_MODEL,
@@ -14,4 +15,5 @@ __all__ = [
     "model_from_dict",
     "model_from_json",
     "run_generation",
+    "run_discovery",
 ]

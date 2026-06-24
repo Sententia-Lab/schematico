@@ -8,6 +8,12 @@ from schematico.helpers import _table_name, _hash_record, _describe_fields
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
+from schematico.tools.tavily_tools import (
+    search_web,
+    extract_web_content,
+    crawl_paths,
+    map_website,
+)
 
 logger = get_logger("core.generator")
 
@@ -22,8 +28,8 @@ def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> s
         "- Every record must be unique across all fields.\n"
         "- Enum fields must use only the declared values.\n"
         "- Numeric fields must respect any declared min/max range.\n"
-        "- Return exactly the requested number of records.",
-        "- Use the tavily tools to find the records.",
+        "- Return exactly the requested number of records.\n"
+        "- Use the tavily tools to find the records."
     )
     if instructions:
         prompt += f"\n\nAdditional instructions:\n{instructions}"
@@ -45,6 +51,7 @@ def build_agent(
         model=resolved,
         output_type=batch_model,
         system_prompt=_build_prompt(schema, samples, instructions),
+        tools=[search_web, extract_web_content, crawl_paths, map_website],
     )
     return agent
 
@@ -61,6 +68,8 @@ def run_discovery(
         logfire.configure(token=logfire_token, send_to_logfire=True)
     else:
         logfire.configure(send_to_logfire=False)
+
+    logfire.configure(scrubbing=False)
     logfire.instrument_pydantic_ai()
 
     table = _table_name(schema)
