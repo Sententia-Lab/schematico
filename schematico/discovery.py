@@ -2,56 +2,34 @@ import logfire
 from pydantic import BaseModel
 from pydantic_ai.models import Model
 from pydantic_ai.agent import Agent
+from pydantic_ai import ToolOutput, UsageLimits
 from typing import Callable
 
-from schematico.helpers import _table_name, _hash_record, _describe_fields
+from schematico.helpers import _hash_record, _build_prompt
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
-from schematico.tools.tavily_tools import (
-    search_web,
-    extract_web_content,
-    crawl_paths,
-    map_website,
-)
+from schematico.tools.tavily_tools import web_search_toolset
+from schematico.tools.statistic_tools import statistic_toolset
+from schematico.prompts import DISCOVERY_SYSTEM_PROMPT
 
 logger = get_logger("core.discovery")
 
 
-def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
-    table = _table_name(schema)
-    field_lines = _describe_fields(schema)
-    prompt = (
-        f"You are a data discovery agent for the '{table}' table.\n"
-        f"Find exactly {samples} realistic, unique records with "
-        "these fields:\n" + "\n".join(field_lines) + "\n\nRules:\n"
-        "- Every record must be unique across all fields.\n"
-        "- Enum fields must use only the declared values.\n"
-        "- Numeric fields must respect any declared min/max range.\n"
-        "- Return exactly the requested number of records.\n"
-        "- Use the tavily tools to find the records."
-    )
-    if instructions:
-        prompt += f"\n\nAdditional instructions:\n{instructions}"
-    return prompt
-
-
 def build_agent(
     schema: type[BaseModel],
-    samples: int,
-    instructions: str = "",
     model: str | Model | None = None,
 ) -> Agent:
     resolved: str | Model = model if model is not None else DEFAULT_MODEL
-    table = _table_name(schema)
-    logger.debug("Building agent for '%s' with model %r", table, resolved)
-    batch_model = build_batch_model(schema)
+    logger.debug("Building agent with model %r", resolved)
+    batch_model = build_batch_model(schema, caller="discovery")
 
     agent = Agent(
         model=resolved,
-        output_type=batch_model,
-        system_prompt=_build_prompt(schema, samples, instructions),
-        tools=[search_web, extract_web_content, crawl_paths, map_website],
+        output_type=ToolOutput(batch_model),
+        retries={"output": 2},
+        system_prompt=DISCOVERY_SYSTEM_PROMPT,
+        toolsets=[web_search_toolset, statistic_toolset],
     )
     return agent
 
@@ -70,13 +48,11 @@ def run_discovery(
         logfire.configure(send_to_logfire=False, scrubbing=False)
     logfire.instrument_pydantic_ai()
 
-    table = _table_name(schema)
-    logger.info(
-        "Starting discovery run for '%s' (%d records requested)", table, samples
-    )
-    agent = build_agent(schema, samples, instructions, model=model)
+    logger.info("Starting discovery run (%d records requested)", samples)
+    agent = build_agent(schema, model)
     result = agent.run_sync(
-        f"Find exactly {samples} unique records for the '{table}' table."
+        _build_prompt(schema, samples, instructions),
+        usage_limits=UsageLimits(request_limit=8, total_tokens_limit=100_000),
     )
     logger.debug("Agent returned %d raw records", len(result.output.records))
 

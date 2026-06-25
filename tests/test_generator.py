@@ -27,7 +27,7 @@ def _mock_agent(batch):
 
 def test_run_generation_returns_expected_shape():
     record_model, _rows, _instructions = model_from_dict(_USERS_SCHEMA)
-    batch_model = build_batch_model(record_model)
+    batch_model = build_batch_model(record_model, caller="generator")
     batch = batch_model(
         records=[
             record_model(id="a", email="a@example.com", role="admin"),
@@ -50,7 +50,7 @@ def test_run_generation_returns_expected_shape():
 
 def test_run_generation_dedupes_output():
     record_model, _rows, _instructions = model_from_dict(_USERS_SCHEMA)
-    batch_model = build_batch_model(record_model)
+    batch_model = build_batch_model(record_model, caller="generator")
     duplicate = record_model(id="a", email="a@example.com", role="admin")
     batch = batch_model(records=[duplicate, duplicate])
 
@@ -69,7 +69,7 @@ def test_run_generation_accepts_user_pydantic_model():
         id: str = Field(description="UUID v4")
         email: str = Field(description="unique work email")
 
-    batch_model = build_batch_model(Users)
+    batch_model = build_batch_model(Users, caller="generator")
     batch = batch_model(
         records=[
             Users(id="a", email="a@example.com"),

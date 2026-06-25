@@ -4,49 +4,31 @@ from typing import Callable
 
 import logfire
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ToolOutput, UsageLimits
 from pydantic_ai.models import Model
 
-from schematico.helpers import _table_name, _hash_record, _describe_fields
+from schematico.helpers import _hash_record, _build_prompt
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
+from schematico.prompts import GENERATOR_SYSTEM_PROMPT
 
 logger = get_logger("core.generator")
 
 
-def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
-    table = _table_name(schema)
-    field_lines = _describe_fields(schema)
-    prompt = (
-        f"You are a data generation agent for the '{table}' table.\n"
-        f"Generate exactly {samples} realistic, unique records with "
-        "these fields:\n" + "\n".join(field_lines) + "\n\nRules:\n"
-        "- Every record must be unique across all fields.\n"
-        "- Enum fields must use only the declared values.\n"
-        "- Numeric fields must respect any declared min/max range.\n"
-        "- Return exactly the requested number of records."
-    )
-    if instructions:
-        prompt += f"\n\nAdditional instructions:\n{instructions}"
-    return prompt
-
-
 def build_agent(
     schema: type[BaseModel],
-    samples: int,
-    instructions: str = "",
     model: str | Model | None = None,
 ) -> Agent:
     resolved: str | Model = model if model is not None else DEFAULT_MODEL
-    table = _table_name(schema)
-    logger.debug("Building agent for '%s' with model %r", table, resolved)
-    batch_model = build_batch_model(schema)
+    logger.debug("Building agent with model %r", resolved)
+    batch_model = build_batch_model(schema, "generator")
 
     agent = Agent(
         model=resolved,
-        output_type=batch_model,
-        system_prompt=_build_prompt(schema, samples, instructions),
+        output_type=ToolOutput(batch_model),
+        retries={"output": 5},
+        system_prompt=GENERATOR_SYSTEM_PROMPT,
     )
     return agent
 
@@ -65,13 +47,11 @@ def run_generation(
         logfire.configure(send_to_logfire=False)
     logfire.instrument_pydantic_ai()
 
-    table = _table_name(schema)
-    logger.info(
-        "Starting generation run for '%s' (%d records requested)", table, samples
-    )
-    agent = build_agent(schema, samples, instructions, model=model)
+    logger.info("Starting generation run (%d records requested)", samples)
+    agent = build_agent(schema, model=model)
     result = agent.run_sync(
-        f"Generate exactly {samples} unique records for the '{table}' table."
+        _build_prompt(schema, samples, instructions),
+        usage_limits=UsageLimits(request_limit=8, total_tokens_limit=100_000),
     )
     logger.debug("Agent returned %d raw records", len(result.output.records))
 

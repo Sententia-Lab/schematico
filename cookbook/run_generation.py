@@ -20,7 +20,6 @@ import schematico
 
 
 class User(BaseModel):
-    id: str = Field(description="UUID v4")
     full_name: str = Field(description="realistic full name")
     email: str = Field(description="unique work email")
     role: str = Field(description="one of: admin, editor, viewer")

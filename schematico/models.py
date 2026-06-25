@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import keyword
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, create_model
 
@@ -130,11 +130,20 @@ def model_from_json(path: str | Path) -> tuple[type[BaseModel], int, str]:
     return model_from_dict(raw)
 
 
-def build_batch_model(record_model: type[BaseModel]) -> type[BaseModel]:
+def build_batch_model(
+    record_model: type[BaseModel], caller: Literal["discovery", "generator"]
+) -> type[BaseModel]:
+    # Extend the record model with a source field
+    enhanced_record = create_model(
+        record_model.__name__,
+        __base__=record_model,
+        source=(Union[str, list[str]], Field(description="Source of the record data")),
+    )
+
     return create_model(
         "RecordBatch",
         records=(
-            list[record_model],
+            list[enhanced_record] if caller == "discovery" else list[record_model],
             Field(default_factory=list, description="Generated records"),
         ),
     )
