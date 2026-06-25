@@ -11,12 +11,13 @@ Pick a provider by setting one of:
 """
 
 from __future__ import annotations
-
 import json
-
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-
 import schematico
+import os
+
+load_dotenv()
 
 
 class Election(BaseModel):
@@ -51,9 +52,9 @@ def main() -> None:
     records = schematico.run_discovery(
         schema=Weather,
         samples=12,
-        instructions="Find me the average weather per month in NYC in degrees Fahrenheit for the past 12 months",
+        instructions="Find me the average weather per month in NYC in degrees Fahrenheit for the 12 months of 2025",
         model=model,
-        logfire_token="pylf_v1_us_kqMnbsW4RpNmxg5cbfNF4zXKrj31Yt4W6Z2F1kCP7gJZ",
+        logfire_token=os.environ.get("LOGFIRE_TOKEN"),
     )
     print(f"got {len(records)} records:")
     print(json.dumps(records, indent=2))

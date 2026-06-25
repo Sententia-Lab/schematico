@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from pydantic_ai.models import Model
 
-from schematico.helpers import _table_name, _hash_record, _describe_fields
+from schematico.helpers import _hash_record, _describe_fields
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
@@ -16,10 +16,9 @@ logger = get_logger("core.generator")
 
 
 def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
-    table = _table_name(schema)
     field_lines = _describe_fields(schema)
     prompt = (
-        f"You are a data generation agent for the '{table}' table.\n"
+        f"You are a data generation agent.\n"
         f"Generate exactly {samples} realistic, unique records with "
         "these fields:\n" + "\n".join(field_lines) + "\n\nRules:\n"
         "- Every record must be unique across all fields.\n"
@@ -41,8 +40,7 @@ def build_agent(
     model: str | Model | None = None,
 ) -> Agent:
     resolved: str | Model = model if model is not None else DEFAULT_MODEL
-    table = _table_name(schema)
-    logger.debug("Building agent for '%s' with model %r", table, resolved)
+    logger.debug("Building agent with model %r", resolved)
     batch_model = build_batch_model(schema)
 
     agent = Agent(
@@ -68,14 +66,9 @@ def run_generation(
         logfire.configure(send_to_logfire=False)
     logfire.instrument_pydantic_ai()
 
-    table = _table_name(schema)
-    logger.info(
-        "Starting generation run for '%s' (%d records requested)", table, samples
-    )
+    logger.info("Starting generation run (%d records requested)", samples)
     agent = build_agent(schema, samples, instructions, model=model)
-    result = agent.run_sync(
-        f"Generate exactly {samples} unique records for the '{table}' table."
-    )
+    result = agent.run_sync(f"Generate exactly {samples} unique records.")
     logger.debug("Agent returned %d raw records", len(result.output.records))
 
     seen: dict[str, dict] = {}

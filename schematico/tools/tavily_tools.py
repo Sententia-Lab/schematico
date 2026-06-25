@@ -1,12 +1,19 @@
 import os
+from pydantic_ai import FunctionToolset
 from tavily import TavilyClient
+from typing import Annotated
+from pydantic import Field
 
 client = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY", ""))
+
+UrlArg = Annotated[
+    str, Field(pattern=r"^(https?)://", description="Absolute http or https URL")
+]
 
 
 def search_web(
     query: str,
-    max_results: int = 5,
+    max_results: Annotated[int, Field(ge=1, le=20)] = 5,
     topic: str = "general",
     include_answer: bool = False,
 ) -> dict:
@@ -14,7 +21,7 @@ def search_web(
 
     Args:
         query: Search query.
-        max_results: Number of results to return (0-20).
+        max_results: Number of results to return (1-20).
         topic: "general" or "news".
         include_answer: If True, include an LLM-generated answer summarizing results.
 
@@ -33,7 +40,7 @@ def search_web(
     )
 
 
-def extract_web_content(url: str) -> dict:
+def extract_web_content(url: UrlArg) -> dict:
     """Extract the main content of a web page with Tavily.
 
     Args:
@@ -48,7 +55,7 @@ def extract_web_content(url: str) -> dict:
     return client.extract(url)
 
 
-def crawl_paths(url: str, instructions: str = "") -> dict:
+def crawl_paths(url: UrlArg, instructions: str = "") -> dict:
     """Crawl a site from `url`, following links, and return page contents.
 
     Args:
@@ -64,7 +71,7 @@ def crawl_paths(url: str, instructions: str = "") -> dict:
     return client.crawl(url, instructions=instructions)
 
 
-def map_website(url: str) -> dict:
+def map_website(url: UrlArg) -> dict:
     """Discover URLs reachable from `url` without fetching their contents.
 
     Args:
@@ -77,3 +84,8 @@ def map_website(url: str) -> dict:
             response_time (float): Seconds.
     """
     return client.map(url)
+
+
+web_search_toolset = FunctionToolset(
+    tools=[search_web, extract_web_content, crawl_paths, map_website]
+)
