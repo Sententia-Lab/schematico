@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Schematico" width="110" />
+  <img src="https://raw.githubusercontent.com/Sententia-Lab/schematico/main/assets/logo.svg" alt="Schematico" width="110" />
 </p>
 
 <h1 align="center">Schematico</h1>
