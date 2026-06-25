@@ -28,9 +28,7 @@ fragile scrapers, and manual cleanup.
 
 So I built a tool where you describe the shape of the data you want — once, in a
 few lines — and let an AI agent go **find it on the live web** and hand it back as
-structured JSON. And when no real data exists yet (you're seeding a dev database,
-writing tests, building a demo), the same schema can **synthesize** realistic
-records instead.
+structured JSON.
 
 One schema. Two ways to fill it.
 
@@ -51,6 +49,80 @@ pipx install schematico   # as a CLI tool
 uv add schematico         # as a library
 pip install schematico    # the classic way
 ```
+---
+
+## Library usage
+
+Define a schema as a Pydantic model and call `run_generation` or `run_discovery`:
+
+```python
+from pydantic import BaseModel, Field
+from schematico import run_generation
+
+class User(BaseModel):
+    id: str = Field(description="UUID v4")
+    full_name: str = Field(description="realistic full name")
+    email: str = Field(description="work email matching the name")
+    role: str = Field(description="one of: admin, editor, viewer")
+
+records = run_generation(
+    User,
+    samples=10,
+    instructions="EU-based users only. Emails must match the full_name.",
+)
+# -> list[dict], validated and de-duplicated
+```
+
+Prefer JSON schemas? Load one and run it:
+
+```python
+from schematico import model_from_json, run_generation
+
+model, rows, instructions = model_from_json("schema.json")
+records = run_generation(model, samples=rows, instructions=instructions)
+```
+
+To find **real** data on the web instead, swap in `run_discovery` (needs
+`TAVILY_API_KEY`):
+
+```python
+from schematico import run_discovery
+records = run_discovery(User, samples=25, instructions="...")
+```
+
+Both functions accept an optional `progress_cb(found, total, event)` callback and
+a `logfire_token` for tracing.
+
+---
+
+## Bring your own models
+
+Schematico runs on [pydantic-ai](https://ai.pydantic.dev/), so you can point it
+at virtually any model — hosted, gateway-routed, or local — and even build a
+**failover chain** that tries each in order.
+
+```python
+from schematico import SchematicoModel, get_llm_model, run_discovery
+
+model = get_llm_model([
+    # try the gateway first…
+    SchematicoModel(model="gateway/anthropic:claude-sonnet-4-6"),
+    # …fall back to a direct provider…
+    SchematicoModel(model="openai:gpt-4.1", api_key="sk-..."),
+    # …then a local, keyless model.
+    SchematicoModel(model="ollama:llama3.2", base_url="http://localhost:11434/v1"),
+])
+
+records = run_discovery(MySchema, samples=50, model=model)
+```
+
+- A bare model string (`"anthropic:claude-sonnet-4-6"`) reads credentials from the
+  provider's usual env var.
+- A `SchematicoModel` lets you pin `api_key` and `base_url` per model.
+- A list becomes an automatic failover chain.
+
+From the CLI, set the model per project (`schematico new`, or
+`schematico <mode> use model <id>`) and the env var that holds its key.
 
 ---
 
@@ -133,81 +205,6 @@ Types are deliberately minimal — the **`description`** does the heavy lifting.
 > There's no dedicated `uuid` / `email` / `timestamp` type on purpose. Use
 > `string` and say what you want in `description` — the model fills it in
 > accordingly, and you're never boxed in by a fixed type list.
-
----
-
-## Library usage
-
-Define a schema as a Pydantic model and call `run_generation` or `run_discovery`:
-
-```python
-from pydantic import BaseModel, Field
-from schematico import run_generation
-
-class User(BaseModel):
-    id: str = Field(description="UUID v4")
-    full_name: str = Field(description="realistic full name")
-    email: str = Field(description="work email matching the name")
-    role: str = Field(description="one of: admin, editor, viewer")
-
-records = run_generation(
-    User,
-    samples=10,
-    instructions="EU-based users only. Emails must match the full_name.",
-)
-# -> list[dict], validated and de-duplicated
-```
-
-Prefer JSON schemas? Load one and run it:
-
-```python
-from schematico import model_from_json, run_generation
-
-model, rows, instructions = model_from_json("schema.json")
-records = run_generation(model, samples=rows, instructions=instructions)
-```
-
-To find **real** data on the web instead, swap in `run_discovery` (needs
-`TAVILY_API_KEY`):
-
-```python
-from schematico import run_discovery
-records = run_discovery(User, samples=25, instructions="...")
-```
-
-Both functions accept an optional `progress_cb(found, total, event)` callback and
-a `logfire_token` for tracing.
-
----
-
-## Bring your own models
-
-Schematico runs on [pydantic-ai](https://ai.pydantic.dev/), so you can point it
-at virtually any model — hosted, gateway-routed, or local — and even build a
-**failover chain** that tries each in order.
-
-```python
-from schematico import SchematicoModel, get_llm_model, run_discovery
-
-model = get_llm_model([
-    # try the gateway first…
-    SchematicoModel(model="gateway/anthropic:claude-sonnet-4-6"),
-    # …fall back to a direct provider…
-    SchematicoModel(model="openai:gpt-4.1", api_key="sk-..."),
-    # …then a local, keyless model.
-    SchematicoModel(model="ollama:llama3.2", base_url="http://localhost:11434/v1"),
-])
-
-records = run_discovery(MySchema, samples=50, model=model)
-```
-
-- A bare model string (`"anthropic:claude-sonnet-4-6"`) reads credentials from the
-  provider's usual env var.
-- A `SchematicoModel` lets you pin `api_key` and `base_url` per model.
-- A list becomes an automatic failover chain.
-
-From the CLI, set the model per project (`schematico new`, or
-`schematico <mode> use model <id>`) and the env var that holds its key.
 
 ---
 
