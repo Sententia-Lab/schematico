@@ -1,7 +1,7 @@
 from pydantic_ai import FunctionToolset
 
 
-def _average(numbers: list[float | int]) -> float:
+def average(numbers: list[float | int]) -> float:
     """Compute the average of a list of numbers.
 
     Args:
@@ -15,7 +15,7 @@ def _average(numbers: list[float | int]) -> float:
     return sum(numbers) / len(numbers)
 
 
-def _median(numbers: list[float | int]) -> float:
+def median(numbers: list[float | int]) -> float:
     """Compute the median of a list of numbers.
 
     Args:
@@ -35,4 +35,4 @@ def _median(numbers: list[float | int]) -> float:
         return sorted_numbers[mid]
 
 
-statistic_toolset = FunctionToolset(tools=[_average, _median])
+statistic_toolset = FunctionToolset(tools=[average, median])
