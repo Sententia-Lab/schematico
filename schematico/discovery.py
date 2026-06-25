@@ -5,7 +5,7 @@ from pydantic_ai.agent import Agent
 from pydantic_ai import ToolOutput, UsageLimits
 from typing import Callable
 
-from schematico.helpers import _hash_record, _describe_fields
+from schematico.helpers import _hash_record, _build_prompt
 from schematico.logging import get_logger
 from schematico.models import build_batch_model
 from schematico.providers import DEFAULT_MODEL
@@ -14,17 +14,6 @@ from schematico.tools.statistic_tools import statistic_toolset
 from schematico.prompts import DISCOVERY_SYSTEM_PROMPT
 
 logger = get_logger("core.discovery")
-
-
-def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
-    fields = _describe_fields(schema)
-    prompt = f"""
-    instructions: {instructions}
-    records: {samples}
-    schema:
-    {fields}
-    """
-    return prompt.strip()
 
 
 def build_agent(

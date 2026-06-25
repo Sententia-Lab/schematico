@@ -29,3 +29,14 @@ def _describe_fields(schema: type[BaseModel]) -> str:
             line += f" (range: {lo} to {hi})"
         lines.append(line)
     return "\n".join(lines)
+
+
+def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> str:
+    fields = _describe_fields(schema)
+    prompt = f"""
+    instructions: {instructions}
+    records: {samples}
+    schema:
+    {fields}
+    """
+    return prompt.strip()
