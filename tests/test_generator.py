@@ -59,7 +59,9 @@ def test_run_generation_dedupes_output():
         patch("schematico.generator.logfire.configure"),
         patch("schematico.generator.logfire.instrument_pydantic_ai"),
     ):
-        records = run_generation(record_model, samples=2)
+        records = run_generation(
+            record_model, samples=2, instructions="mock instructions"
+        )
 
     assert len(records) == 1
 

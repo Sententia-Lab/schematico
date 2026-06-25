@@ -149,7 +149,9 @@ def build_batch_model(
             list[enhanced_record] if is_discovery else list[record_model],
             Field(
                 default_factory=list,
-                description="Discovered records" if is_discovery else "Generated records",
+                description=(
+                    "Discovered records" if is_discovery else "Generated records"
+                ),
             ),
         ),
     )
