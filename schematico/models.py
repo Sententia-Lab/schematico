@@ -130,7 +130,9 @@ def model_from_json(path: str | Path) -> tuple[type[BaseModel], int, str]:
     return model_from_dict(raw)
 
 
-def build_batch_model(record_model: type[BaseModel]) -> type[BaseModel]:
+def build_batch_model(
+    record_model: type[BaseModel], caller: Literal["discovery", "generator"]
+) -> type[BaseModel]:
     # Extend the record model with a source field
     enhanced_record = create_model(
         record_model.__name__,
@@ -141,7 +143,7 @@ def build_batch_model(record_model: type[BaseModel]) -> type[BaseModel]:
     return create_model(
         "RecordBatch",
         records=(
-            list[enhanced_record],
+            list[enhanced_record] if caller == "discovery" else list[record_model],
             Field(default_factory=list, description="Generated records"),
         ),
     )

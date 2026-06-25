@@ -33,7 +33,7 @@ def build_agent(
 ) -> Agent:
     resolved: str | Model = model if model is not None else DEFAULT_MODEL
     logger.debug("Building agent with model %r", resolved)
-    batch_model = build_batch_model(schema)
+    batch_model = build_batch_model(schema, caller="discovery")
 
     agent = Agent(
         model=resolved,
