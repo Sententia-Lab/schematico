@@ -19,11 +19,22 @@ from pydantic import BaseModel, Field
 import schematico
 
 
-class User(BaseModel):
+class Election(BaseModel):
     district: str = Field(description="state and district, e.g. 'CA-12'")
     election_date: str = Field(description="election date in YYYY-MM-DD format")
     candidates: str = Field(
         description="a string-list of candidates running in the election"
+    )
+
+
+class Weather(BaseModel):
+    year: int = Field(description="The year of the weather data")
+    location: str = Field(description="NYC")
+    month: str = Field(
+        description="The month of the year (e.g. 'January', 'February', etc.)"
+    )
+    average_temperature: float = Field(
+        description="Average temperature in degrees Fahrenheit for the month"
     )
 
 
@@ -38,10 +49,11 @@ def main() -> None:
     model = schematico.get_llm_model(model_list)
 
     records = schematico.run_discovery(
-        schema=User,
-        samples=60,
-        instructions="Find me all congressional elections occurring in the 2026 midterms",
+        schema=Weather,
+        samples=12,
+        instructions="Find me the average weather per month in NYC in degrees Fahrenheit for the past 12 months",
         model=model,
+        logfire_token="pylf_v1_us_kqMnbsW4RpNmxg5cbfNF4zXKrj31Yt4W6Z2F1kCP7gJZ",
     )
     print(f"got {len(records)} records:")
     print(json.dumps(records, indent=2))

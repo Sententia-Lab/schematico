@@ -2,6 +2,7 @@ import logfire
 from pydantic import BaseModel
 from pydantic_ai.models import Model
 from pydantic_ai.agent import Agent
+from pydantic_ai import ToolOutput
 from typing import Callable
 
 from schematico.helpers import _table_name, _hash_record, _describe_fields
@@ -29,7 +30,14 @@ def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> s
         "- Enum fields must use only the declared values.\n"
         "- Numeric fields must respect any declared min/max range.\n"
         "- Return exactly the requested number of records.\n"
-        "- Use the tavily tools to find the records."
+        "- Use the tavily tools to find the records.\n"
+        "- Make sure to converge on an answer. Dont spend too much time "
+        "searching for records.\n"
+        "- Do your reasoning through tool calls. Your FINAL answer must be "
+        "returned via the structured output, never as a plain-text message.\n"
+        "- If web extraction fails or you can't find enough records, still "
+        "return a valid result with whatever records you have (an empty list "
+        "is fine)."
     )
     if instructions:
         prompt += f"\n\nAdditional instructions:\n{instructions}"
@@ -49,7 +57,8 @@ def build_agent(
 
     agent = Agent(
         model=resolved,
-        output_type=batch_model,
+        output_type=ToolOutput(batch_model),
+        retries={"output": 5},
         system_prompt=_build_prompt(schema, samples, instructions),
         tools=[search_web, extract_web_content, crawl_paths, map_website],
     )

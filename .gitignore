@@ -39,3 +39,5 @@ output/
 output_files/
 .schematico
 output.json
+
+launch/

@@ -4,7 +4,7 @@ from typing import Callable
 
 import logfire
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ToolOutput
 from pydantic_ai.models import Model
 
 from schematico.helpers import _table_name, _hash_record, _describe_fields
@@ -25,7 +25,9 @@ def _build_prompt(schema: type[BaseModel], samples: int, instructions: str) -> s
         "- Every record must be unique across all fields.\n"
         "- Enum fields must use only the declared values.\n"
         "- Numeric fields must respect any declared min/max range.\n"
-        "- Return exactly the requested number of records."
+        "- Return exactly the requested number of records.\n"
+        "- Your FINAL answer must be returned via the structured output, "
+        "never as a plain-text message."
     )
     if instructions:
         prompt += f"\n\nAdditional instructions:\n{instructions}"
@@ -45,7 +47,8 @@ def build_agent(
 
     agent = Agent(
         model=resolved,
-        output_type=batch_model,
+        output_type=ToolOutput(batch_model),
+        retries={"output": 5},
         system_prompt=_build_prompt(schema, samples, instructions),
     )
     return agent
