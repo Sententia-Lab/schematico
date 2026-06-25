@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from schematico.schemas.llm_provider_schemas import SchematicoModel
 from pydantic_ai.models import Model, infer_model
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.providers import Provider, infer_provider, infer_provider_class
@@ -11,19 +11,6 @@ from pydantic_ai.providers.gateway import gateway_provider
 
 DEFAULT_MODEL = "gateway/anthropic:claude-sonnet-4-6"
 load_dotenv()
-
-
-class SchematicoModel(BaseModel):
-    """One entry in a fallback chain.
-
-    `model` is a pydantic-ai model string ("anthropic:claude-sonnet-4-6",
-    "gateway/openai:gpt-4o", "ollama:llama3.1", …). `api_key` and `base_url` are
-    optional; when left as None, pydantic-ai reads the provider's env var.
-    """
-
-    model: str
-    api_key: str | None = None
-    base_url: str | None = None
 
 
 def _provider_factory(spec: SchematicoModel) -> Callable[[str], Provider]:

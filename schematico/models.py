@@ -7,6 +7,8 @@ from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, create_model
 
+from schematico.schemas.helper_schemas import CallType
+
 _PRIMITIVES: dict[str, type] = {
     "string": str,
     "int": int,
@@ -131,7 +133,7 @@ def model_from_json(path: str | Path) -> tuple[type[BaseModel], int, str]:
 
 
 def build_batch_model(
-    record_model: type[BaseModel], caller: Literal["discovery", "generator"]
+    record_model: type[BaseModel], caller: CallType
 ) -> type[BaseModel]:
     # Extend the record model with a source field
     enhanced_record = create_model(
@@ -140,10 +142,14 @@ def build_batch_model(
         source=(Union[str, list[str]], Field(description="Source of the record data")),
     )
 
+    is_discovery = caller == CallType.DISCOVERY
     return create_model(
         "RecordBatch",
         records=(
-            list[enhanced_record] if caller == "discovery" else list[record_model],
-            Field(default_factory=list, description="Generated records"),
+            list[enhanced_record] if is_discovery else list[record_model],
+            Field(
+                default_factory=list,
+                description="Discovered records" if is_discovery else "Generated records",
+            ),
         ),
     )

@@ -4,11 +4,9 @@ from tavily import TavilyClient
 from typing import Annotated
 from pydantic import Field
 
-client = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY", ""))
+from schematico.schemas.tool_schemas import UrlArg
 
-UrlArg = Annotated[
-    str, Field(pattern=r"^(https?)://", description="Absolute http or https URL")
-]
+client = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY", ""))
 
 
 def search_web(
